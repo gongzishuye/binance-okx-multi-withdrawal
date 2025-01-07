@@ -2,11 +2,37 @@ import os
 import time
 import ccxt
 import random
+import logging
+from datetime import datetime
 from dotenv import load_dotenv
 from functools import wraps
 
 # 加载.env文件
 load_dotenv()
+
+# 配置logger
+current_date = datetime.now().strftime('%Y-%m-%d')
+log_filename = f'log_{current_date}.log'
+
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+
+# 创建文件处理器
+file_handler = logging.FileHandler(log_filename, encoding='utf-8')
+file_handler.setLevel(logging.INFO)
+
+# 创建控制台处理器
+console_handler = logging.StreamHandler()
+console_handler.setLevel(logging.INFO)
+
+# 设置日志格式
+formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+file_handler.setFormatter(formatter)
+console_handler.setFormatter(formatter)
+
+# 添加处理器到logger
+logger.addHandler(file_handler)
+logger.addHandler(console_handler)
 
 # ----options---- #
 cex_number = int(os.environ.get("CEX_NUMBER"))
@@ -41,10 +67,10 @@ def retry_on_error(max_retries=3, delay=5):
                 except Exception as e:
                     retries += 1
                     if retries == max_retries:
-                        print(f"最终失败 (重试 {retries}/{max_retries}): {str(e)}")
+                        logger.error(f"最终失败 (重试 {retries}/{max_retries}): {str(e)}")
                         raise
-                    print(f"失败 (重试 {retries}/{max_retries}): {str(e)}")
-                    print(f"等待 {delay} 秒后重试...")
+                    logger.warning(f"失败 (重试 {retries}/{max_retries}): {str(e)}")
+                    logger.info(f"等待 {delay} 秒后重试...")
                     time.sleep(delay)
             return None
         return wrapper
@@ -71,8 +97,8 @@ def binance_withdraw(address, amount_to_withdrawal):
             "network": network
         }
     )
-    print(f'提币数量 {amount_to_withdrawal} {symbolWithdraw} ', flush=True)
-    print(f'提币成功 {address}', flush=True)
+    logger.info(f'提币数量 {amount_to_withdrawal} {symbolWithdraw}')
+    logger.info(f'提币成功 {address}')
 
 @retry_on_error(max_retries=3, delay=5)
 def okx_withdraw(address, amount_to_withdrawal):
@@ -97,8 +123,8 @@ def okx_withdraw(address, amount_to_withdrawal):
                           "network": network
                       }
                       )
-    print(f'提币数量 {amount_to_withdrawal} {symbolWithdraw} ', flush=True)
-    print(f'提币成功 {address}', flush=True)
+    logger.info(f'提币数量 {amount_to_withdrawal} {symbolWithdraw}')
+    logger.info(f'提币成功 {address}')
 
 @retry_on_error(max_retries=3, delay=5)
 def choose_cex(address, amount_to_withdrawal):
@@ -132,12 +158,12 @@ def get_withdrawal_fee(symbolWithdraw, chainName):
                             return 0
                         else:
                             return withdrawal_fee
-    raise ValueError(f"获取失败")
+    raise ValueError(f"获取提现手续费失败")
 
 if __name__ == "__main__":
     with open("wallets.txt", "r") as f:
         wallets_list = [row.strip() for row in f]
-        print(f'钱包数量: {len(wallets_list)}')
+        logger.info(f'钱包数量: {len(wallets_list)}')
         if cex_number == 1:
             cex = 'Binance'
         else:
@@ -151,5 +177,5 @@ if __name__ == "__main__":
                 amount_to_withdrawal = amount_min
             choose_cex(address, float(amount_to_withdrawal))
             random_time = random.randint(int(delay_min), int(delay_max))
-            print(f'{idx} 等待时间 {random_time} s')
+            logger.info(f'{idx} 等待时间 {random_time} s')
             time.sleep(random_time)
