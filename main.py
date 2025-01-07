@@ -144,12 +144,12 @@ if __name__ == "__main__":
             cex = 'OKX'
         time.sleep(random.randint(2, 4))
 
-        for address in wallets_list:
+        for idx, address in enumerate(wallets_list):
             amount_to_withdrawal = round(random.uniform(float(amount_min), float(amount_max)), 5)
             
             if amount_min == amount_max:
                 amount_to_withdrawal = amount_min
             choose_cex(address, float(amount_to_withdrawal))
             random_time = random.randint(int(delay_min), int(delay_max))
-            print(f'等待时间 {random_time} s')
+            print(f'{idx} 等待时间 {random_time} s')
             time.sleep(random_time)
